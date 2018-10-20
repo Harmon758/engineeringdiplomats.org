@@ -103,6 +103,9 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# Visual Studio Code settings
+.vscode/
+
 backpop
 deploy.sh
 *token**
