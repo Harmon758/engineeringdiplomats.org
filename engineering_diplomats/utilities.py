@@ -10,8 +10,8 @@ from typing import List, Tuple, Union
 from dateutil.parser import parse
 from twilio.rest import Client
 
-from engineering_diplomats.decorators import thread_task
-from engineering_diplomats.settings import service
+from decorators import thread_task
+from settings import service
 
 
 @thread_task

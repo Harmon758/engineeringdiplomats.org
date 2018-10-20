@@ -20,13 +20,13 @@ from flask import (
 	url_for,
 )
 
-from engineering_diplomats.models import (
+from models import (
 	User,
 	QuestionDocument,
 	StudentQueryForm,
 )
 
-from engineering_diplomats.utilities import answer_submission, get_events, question_submission 
+from utilities import answer_submission, get_events, question_submission 
 
 HTMLBody = TypeVar("HTMLBody", str, str, str)
 

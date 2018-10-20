@@ -12,7 +12,7 @@ from pymongo import MongoClient
 from pymongo.cursor import CursorType
 from pymongo.errors import ExecutionTimeout, OperationFailure, ServerSelectionTimeoutError
 
-from engineering_diplomats.models import QuestionDocument
+from models import QuestionDocument
 
 
 @logme.log
