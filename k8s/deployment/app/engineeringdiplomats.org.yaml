@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: engineeringdiplomats
+  name: engineeringdiplomats
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: engineeringdiplomats
+  template:
+    metadata:
+      labels:
+        app: engineeringdiplomats
+    spec:
+      containers:
+      - name: engineeringdiplomats
+        image: gcr.io/engineeringdiplomats-2019/engineeringdiplomats.org:latest
+        ports:
+          - containerPort: 8080
+      - name: nginx-sidecar
+        image: gcr.io/engineeringdiplomats-2019/ed-nginx-sidecar
+        ports:
+          - containerPort: 443
+          - containerPort: 80
+      restartPolicy: Always
+      imagePullSecrets:
+      - name: gcrcred

@@ -13,12 +13,15 @@ import logme
 from flask import (
 	abort,
 	flash,
+	jsonify,
 	redirect, 
 	request, 
 	render_template, 
 	session, 
 	url_for,
 )
+
+from requests import get as rget
 
 from models import (
 	User,
@@ -52,7 +55,8 @@ class SiteHandler(object):
 		self.mailer = mailer
 		self.callback = "http://localhost:8080/authorize"
 		self.external = False
-
+		self.deps_url = os.environ.get("DEPS_URL")
+		self.repo_url = os.environ.get("REPO_URL")
 
 	def get_token(self) -> Union[str, None]: # pragma: no cover
 		"""Called by flask_oauthlib.client to retrieve current access token.
@@ -228,6 +232,8 @@ class SiteHandler(object):
 					self.logger.info(f"Removed question with id {question_id}.")
 					flash("Your answer has been submitted. Thanks!")
 					return redirect(url_for("questions", _external=self.external))
+			flash("Only Engineering Diplomats may answer questions.")
+			return redirect(url_for("index", _external=self.external))
 		flash("Please login first.")
 		return redirect(url_for("login", _external=self.external))
 
@@ -311,3 +317,31 @@ class SiteHandler(object):
 	def fundraisers(self) -> HTMLBody:
 		"""View for fundraisers page."""
 		return render_template("fundraisers.jinja2", fundraisers=self.db.get_fundraisers())
+
+
+	def points(self) -> HTMLBody:
+		"""View for points page.
+		
+		Notes
+		------
+		Only Engineering Diplomats may view this page.
+		"""
+		if self.is_authorized:
+			if session.get("user").get("is_diplomat") == "True":
+				return render_template("points.jinja2", points=self.db.get_points(session.get("user").get("email")))
+			flash("Only Engineering Diplomats may view this page.")
+			return redirect(url_for("index", _external=self.external))
+		flash("Please login first.")
+		return redirect(url_for("login", _external=self.external))
+
+
+	def health(self) -> dict:
+		deps = rget(self.deps_url).json()
+		return jsonify(
+			head=rget(self.repo_url).json()["sha"][:6],
+			python=deps["_meta"]["requires"]["python_version"],
+			flask=deps["default"]["flask"]["version"],
+			gevent=deps["default"]["gevent"]["version"],
+			pymongo=deps["default"]["pymongo"]["version"],
+			requests=deps["default"]["requests"]["version"],
+		)
