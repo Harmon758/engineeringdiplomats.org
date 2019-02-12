@@ -4,7 +4,7 @@
 
 import os
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Tuple, Union
 
 from dateutil.parser import parse
@@ -12,7 +12,6 @@ from twilio.rest import Client
 
 from engineering_diplomats.decorators import thread_task
 from engineering_diplomats.settings import service
-
 
 @thread_task
 def send_text_message(message: str) -> None:
@@ -98,13 +97,14 @@ def get_events() -> Union[List[List], List[None]]:
 			  The location of the event.
 			- 3 : List[str] 
 			  The diplomats attending the event.
+			- 4: str
+			  The unique event ID
 		List[None]:
 			If there are no events in the Google Calendar.
 
-	TODO: Correct start_time
 	Notes
 	------
-	Attendes denotes that diplomats that have RSVPed for an event
+	event.attendees denotes that diplomats that have RSVPed for an event
 	"""
 	now = datetime.utcnow().isoformat() + "Z" 
 	events_result = service.events().list(
@@ -113,25 +113,81 @@ def get_events() -> Union[List[List], List[None]]:
 		maxResults=100, 
 		singleEvents=True,
 		orderBy="startTime").execute()
-	events = events_result.get("items", [])
 	all_events = []
-	for event in events:
-		start_time = parse(event["start"].get("dateTime", event["start"].get("date"))).__str__().split(" ")[0]
-		start_time = f"{parse(start_time).strftime('%m-%d-%Y')} at 5:00 PM"
-		entry = [event["summary"], start_time, event["location"], event.get("attendees", None)]
-		if entry[3] is not None: # pragma: allow
-			entry[3] = [e["email"] for e in entry[3]]
-		all_events.append(entry)
+	for event in events_result.get("items", []):
+		start_date, *start_time = parse(event["start"].get("dateTime")).strftime("%m/%d/%Y %I:%M %p").split(" ")
+		start_time = " ".join(start_time)
+		start = f"{start_date} at {start_time}"
+		
+		# Ignore calendar entries that do no have a location
+		if "location" in event: # pragma: allow
+			entry = [event["summary"], start, event["location"], event.get("attendees", None), event.get("id")]
+			if entry[3] is not None: # pragma: allow
+				entry[3] = [e["email"] for e in entry[3]]
+			all_events.append(entry)
 	return all_events
 
 
-def update_event(event: List[str]) -> None:
-	"""Update the RSVP of an event.
+def update_event(email: str, event_id: str, unregister: bool) -> str:
+	"""Update the RSVP of an event with a new attendee.
 
 	Parameters
 	----------
-	event : List[str]
-		A list containing the name of the event to be updated and 
-		the email of the diplomat who RSVP'd.
+	email : str
+		The email of the diplomat RSVPing
+	event_id : str
+		The event ID of the information session/event being RSVPed for
+	unregister : bool
+		A flag to denote if the request being made is to unregister a diplomat
+	
+	Returns
+	--------
+	str
+		Result message of the update
 	"""
-	raise NotImplementedError
+	request_body = {
+		"sendUpdates": "none",
+	}
+
+	# Get all attendees
+	all_attendees = service.events().get(
+		calendarId="primary", 
+		eventId=event_id
+		).execute().get("attendees")
+	
+	if all_attendees is None:
+		all_attendees = []
+	else:
+		all_attendees = [a.get("email") for a in all_attendees]
+	
+	if unregister:
+		# Remove the attendee 
+		all_attendees.remove(email)
+		request_body["attendees"] = [{"email": email} for email in all_attendees]
+		flash_message = "You are now unregistered for this event."
+	else:
+		# Add the new attendee
+		all_attendees.append(email)
+		request_body["attendees"] = [{"email": e} for e in all_attendees]
+		flash_message = """
+			You are RSVPed for this event. 
+			If this event is an on-campus information session,
+			please remember to review the presentation for this 
+			information session in advance.
+			"""
+	
+	try:
+		service.events().patch(
+			calendarId="primary",
+			eventId=event_id,
+			body=request_body,
+		).execute()
+		state = "RSVPed" if not unregister else "cancelled"
+		send_text_message(f"{email} has successfully {state} for event {event_id}.")
+		return flash_message
+
+	except Exception as e:
+		error_message = f"Error: {e}"
+		send_text_message(f"Error: {e}")
+		return error_message
+

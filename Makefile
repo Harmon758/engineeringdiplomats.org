@@ -4,7 +4,7 @@ init:
 	pipenv install --dev
 
 run:
-	python engineering_diplomats/main.py
+	pipenv run python engineering_diplomats/main.py
 
 test:
 	pipenv run py.test -s --show-progress --cov=./
@@ -19,8 +19,8 @@ docs:
 		echo Please run 'pipenv shell' first. 
 
 tarball:
-	tar -czf credentials.tar.gz token.json .env credentials.json logs
+	tar -czf credentials.tar.gz token.json .env credentials.json gcp-creds.json
 	travis login --github-token $(TRAVIS_TOKEN)
 	travis encrypt TOKEN=$(TRAVIS_TOKEN) --add
 	gpg -c credentials.tar.gz
-	del credentials.tar.gz
+	rm credentials.tar.gz

@@ -34,12 +34,4 @@ class TestSuiteOther(object):
 		ttuengineeringdiplomats@gmail.com's Google Calendar."""
 		all_events = get_events()
 		for event in all_events:
-			assert len(event) is 4
-
-
-	def test_update_event(self):
-		"""Update the RSVP of an event."""
-		try:
-			update_event(["diplomat_a@ttu.edu", "diplomat_a@ttu.edu"])
-		except NotImplementedError:
-			pass
+			assert len(event) == 5

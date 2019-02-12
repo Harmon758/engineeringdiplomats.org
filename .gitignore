@@ -107,11 +107,13 @@ venv.bak/
 .vscode/
 
 backpop
-deploy.sh
-*token**
+*points**
+!*points.jinja2
+**.zip
 *secret**
-credentials.json
-credentials.tar.gz
+*cred**
 *token**
 docs/
 certs/
+.vagrant
+dump/
